@@ -348,6 +348,12 @@ textarea {
 
 .checkbox input {
   width: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 0;
+  accent-color: var(--accent);
 }
 
 .filters {
@@ -357,7 +363,7 @@ textarea {
   margin-bottom: 16px;
 }
 
-.filters input {
+.filters > input {
   flex: 1;
   min-width: 200px;
 }
