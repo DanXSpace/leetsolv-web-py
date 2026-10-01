@@ -13,6 +13,8 @@ from typing import Any, Callable
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.enrich import enrich_problem
+from app.importer import parse_deltas, parse_questions
 from app.models import Delta, Problem, Setting
 from app.scheduler import Familiarity, Importance, MemoryUse, Question, Scheduler
 from app.urls import parse_leetcode_url
@@ -125,6 +127,7 @@ class QuestionService:
 
         existing = self.session.scalar(select(Problem).where(Problem.url == url))
         if existing is not None:
+            enrich_problem(existing)
             old_state = existing.to_state_dict()
             q = Question(
                 id=existing.id,
@@ -166,6 +169,7 @@ class QuestionService:
             created_at=now,
             updated_at=now,
         )
+        enrich_problem(p)
         q = Question(
             id=0,
             url=url,
@@ -231,6 +235,41 @@ class QuestionService:
             self.session.add(Problem.from_state_dict(last.old_state))
         self.session.delete(last)
         self.session.commit()
+
+    def import_leetsolv(self, questions_obj: dict[str, Any], deltas_obj: list[dict[str, Any]]) -> dict[str, int]:
+        """One-time import of leetsolv's ``questions.json`` + ``deltas.json``.
+
+        Idempotent: skips questions whose URL is already tracked, writes
+        history only for newly imported questions, and backfills enrichment on
+        any rows still missing metadata.
+        """
+        existing_urls = {url for (url,) in self.session.execute(select(Problem.url)).all()}
+        problems = parse_questions(questions_obj)
+        deltas = parse_deltas(deltas_obj)
+
+        imported_ids: set[int] = set()
+        for p in problems:
+            if p.url in existing_urls:
+                continue
+            self.session.add(p)
+            imported_ids.add(p.id)
+
+        for d in deltas:
+            if d.question_id in imported_ids:
+                self.session.add(d)
+
+        enriched = 0
+        for p in self.session.scalars(select(Problem).where(Problem.title.is_(None))).all():
+            enrich_problem(p)
+            enriched += 1
+
+        self.session.commit()
+        return {
+            "imported": len(imported_ids),
+            "skipped": len(problems) - len(imported_ids),
+            "deltas": sum(1 for d in deltas if d.question_id in imported_ids),
+            "enriched": enriched,
+        }
 
     # -- settings --
 

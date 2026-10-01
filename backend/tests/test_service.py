@@ -58,6 +58,16 @@ def test_add_new_problem(svc):
     assert delta.old_state is None
 
 
+# --- upsert (add) ---
+
+
+def test_add_enriches_metadata(svc):
+    p, _ = svc.upsert(URL, "", Familiarity.HARD, Importance.HIGH, MemoryUse.REASONED)
+    assert p.title == "Two Sum"
+    assert p.difficulty == "Easy"
+    assert p.tags == ["Array", "Hash Table"]
+
+
 # --- upsert (review) ---
 
 
