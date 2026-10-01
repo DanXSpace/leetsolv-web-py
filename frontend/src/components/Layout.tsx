@@ -1,9 +1,9 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { api } from '../api';
+import { api, setShareToken } from '../api';
 import { useAuth } from '../auth';
 
 export default function Layout() {
-  const { role, login } = useAuth();
+  const { role, login, refresh } = useAuth();
   const isOwner = role === 'owner';
 
   async function logout() {
@@ -14,6 +14,13 @@ export default function Layout() {
     }
     document.cookie = 'leetsolv_session=; Max-Age=0; path=/';
     window.location.href = '/';
+  }
+
+  async function signIn() {
+    // Leave the read-only mentor view and return to the owner login screen.
+    localStorage.removeItem('shareToken');
+    setShareToken(null);
+    await refresh();
   }
 
   const linkClass = ({ isActive }: { isActive: boolean }) => (isActive ? 'active' : '');
@@ -57,7 +64,12 @@ export default function Layout() {
             </button>
           </div>
         ) : (
-          <span className="badge badge-mentor">Read-only</span>
+          <div className="who">
+            <span className="badge badge-mentor">Read-only</span>
+            <button className="link" onClick={signIn}>
+              Sign in
+            </button>
+          </div>
         )}
       </header>
       <main className="content">
