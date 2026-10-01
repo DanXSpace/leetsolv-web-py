@@ -24,6 +24,9 @@ class Settings:
             for o in _env("LEETSOLV_CORS_ORIGINS", "http://localhost:5173").split(",")
             if o.strip()
         ]
+        # Directory of the built frontend (Vite `dist`). When set and it holds
+        # an index.html, the API also serves the SPA (same-origin in prod).
+        self.dist_dir = _env("LEETSOLV_DIST_DIR")
 
 
 settings = Settings()
